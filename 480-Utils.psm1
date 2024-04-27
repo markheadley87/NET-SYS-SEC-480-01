@@ -126,3 +126,201 @@ Function New-480LinkedClone {
         Write-Host "Failed to create linked clone: $_" -ForegroundColor Red
     }
 }
+
+
+Function New-480FullClone {
+    param (
+        [string]$EsxiHost = "192.168.7.21",
+        [string]$Datastore = "datastore1-super11"
+    )
+
+    try {
+        Write-Host "Please select the source VM for cloning from the 'BASEVM' folder:"
+        $sourceVM = Select-VM -folder "BASEVM"
+
+        if (-not $sourceVM) {
+            throw "No VM selected or VM selection is invalid."
+        }
+        
+        $CloneName = Read-Host 'Enter full clone name'
+        $NetworkName = Read-Host 'Enter the network name for the full clone'
+
+        # Ensure the 'Base' snapshot exists.
+        $snapshotName = "Base"
+        $snapshot = Get-Snapshot -VM $sourceVM -Name $snapshotName -ErrorAction SilentlyContinue
+        if (-not $snapshot) {
+            Write-Host "Snapshot named 'Base' not found for VM $sourceVM.Name."
+            $createSnap = Read-Host "Would you like to create a 'Base' snapshot now? (Y/N)"
+            if ($createSnap -eq 'Y') {
+                Write-Host "Creating 'Base' snapshot for VM $sourceVM.Name..."
+                $snapshot = New-Snapshot -VM $sourceVM -Name "Base"
+                Write-Host "Snapshot 'Base' created."
+            } else {
+                throw "Unable to proceed without a 'Base' snapshot."
+            }
+        }
+
+        # Clone the VM to create a full clone.
+        $cloneVM = New-VM -Name $CloneName -VM $sourceVM -VMHost $EsxiHost -Datastore $Datastore -DiskStorageFormat Thin -Location (Get-Folder -Name "BASEVM")
+        
+        # Configure the network adapter to the specified network after VM creation.
+        Get-NetworkAdapter -VM $cloneVM | Set-NetworkAdapter -NetworkName $NetworkName -Confirm:$false
+
+        Write-Host "Full clone $CloneName created successfully and connected to network $NetworkName." -ForegroundColor Green
+    } catch {
+        Write-Host "Failed to create full clone: $_" -ForegroundColor Red
+    }
+}
+
+Function New-Network {
+    # Prompt user for inputs
+    $VirtualSwitchName = Read-Host "Enter the name for the new Virtual Switch"
+    $PortGroupName = Read-Host "Enter the name for the new Port Group"
+    $vHost = Read-Host "Enter the name of the ESXi host"
+
+    $esxiHost = Get-VMHost -Name $vHost
+
+    # Create the Virtual Switch if it does not exist
+    $vSwitch = Get-VirtualSwitch -VMHost $esxiHost -Name $VirtualSwitchName -ErrorAction SilentlyContinue
+    if (-not $vSwitch) {
+        Write-Host "Creating new Virtual Switch named $VirtualSwitchName..."
+        $vSwitch = New-VirtualSwitch -VMHost $esxiHost -Name $VirtualSwitchName
+    }
+
+    # Create the Port Group if it does not exist
+    $portGroup = Get-VirtualPortGroup -VirtualSwitch $vSwitch -Name $PortGroupName -ErrorAction SilentlyContinue
+    if (-not $portGroup) {
+        Write-Host "Creating new Port Group named $PortGroupName..."
+        New-VirtualPortGroup -VirtualSwitch $vSwitch -Name $PortGroupName
+    }
+}
+
+
+
+Function Get-IP {
+    # Prompt user for VM name
+    $VMName = Read-Host "Enter the name of the VM"
+
+    $vm = Get-VM -Name $VMName
+
+    if (-not $vm) {
+        Write-Host "VM with name $VMName was not found."
+        return
+    }
+
+    # Get the first network adapter of the VM
+    $netAdapter = Get-NetworkAdapter -VM $vm | Select -First 1
+
+    if (-not $netAdapter) {
+        Write-Host "No network adapter found for VM $VMName."
+        return
+    }
+
+    # Assuming the VM might have multiple IP addresses, take the first one
+    $ipAddress = $vm.Guest.IpAddress[0]
+    $macAddress = $netAdapter.MacAddress
+    $vmName = $vm.Name
+
+    # Output the results
+    Write-Host "VM Name: $vmName"
+    Write-Host "IP Address: $ipAddress"
+    Write-Host "MAC Address: $macAddress"
+}
+
+Function Invoke-480StartVM {
+    # No parameters defined; VM names will be gathered via user input.
+    try {
+        $VMNames = Read-Host "Enter the names of the VMs to start (separate multiple names with commas)"
+        $VMNameArray = $VMNames -split ',' | ForEach-Object { $_.Trim() }
+
+        foreach ($Name in $VMNameArray) {
+            $VM = Get-VM -Name $Name -ErrorAction SilentlyContinue
+            if ($VM) {
+                Start-VM -VM $VM -Confirm:$false
+                Write-Host "VM '$Name' has been started." -ForegroundColor Green
+            } else {
+                Write-Host "VM '$Name' not found." -ForegroundColor Red
+            }
+        }
+    } catch {
+        Write-Host "An error occurred: $_" -ForegroundColor Red
+    }
+}
+
+Function Invoke-480StopVM {
+    # No parameters for VM names; gathers names via user input.
+    try {
+        $VMNames = Read-Host "Enter the names of the VMs to stop (separate multiple names with commas)"
+        $VMNameArray = $VMNames -split ',' | ForEach-Object { $_.Trim() }
+        $Force = $false
+
+        # Optional: Ask the user if they want to force the VMs to stop.
+        $forceInput = Read-Host "Do you want to force stop the VMs? (Y/N)"
+        if ($forceInput -eq "Y") {
+            $Force = $true
+        }
+
+        foreach ($Name in $VMNameArray) {
+            $VM = Get-VM -Name $Name -ErrorAction SilentlyContinue
+            if ($VM) {
+                if ($Force) {
+                    Stop-VM -VM $VM -Confirm:$false -Kill
+                    Write-Host "VM '$Name' has been forcefully stopped." -ForegroundColor Yellow
+                } else {
+                    Stop-VM -VM $VM -Confirm:$false
+                    Write-Host "VM '$Name' has been stopped." -ForegroundColor Green
+                }
+            } else {
+                Write-Host "VM '$Name' not found." -ForegroundColor Red
+            }
+        }
+    } catch {
+        Write-Host "An error occurred: $_" -ForegroundColor Red
+    }
+}
+
+Function Set-Network {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$VMName,
+        
+        [Parameter(Mandatory = $true)]
+        [string]$NetworkName,
+        
+        [Parameter(Mandatory = $false)]
+        [int[]]$AdapterIndices = @(1)
+    )
+    
+    # Ensure you are connected to a vCenter or ESXi host.
+    if (-not (Get-PowerCLIConfiguration).DefaultVIServerMode) {
+        Write-Host "Please connect to a vCenter or ESXi host using Connect-VIServer." -ForegroundColor Red
+        return
+    }
+    
+    try {
+        # Retrieve the specified VM.
+        $vm = Get-VM -Name $VMName -ErrorAction Stop
+        
+        # Retrieve all network adapters of the VM.
+        $networkAdapters = Get-NetworkAdapter -VM $vm
+        
+        # Loop through each specified adapter index.
+        foreach ($index in $AdapterIndices) {
+            # Retrieve the specific network adapter by index.
+            $adapter = $networkAdapters | Where-Object {$_.Name -eq "Network adapter $index"}
+            
+            if ($adapter) {
+                # Set the network adapter to the specified network.
+                Set-NetworkAdapter -NetworkAdapter $adapter -NetworkName $NetworkName -Confirm:$false
+                Write-Host "Set $($adapter.Name) on VM '$VMName' to network '$NetworkName'." -ForegroundColor Green
+            }
+            else {
+                Write-Host "Network adapter with index $index not found on VM '$VMName'." -ForegroundColor Yellow
+            }
+        }
+    } catch {
+        Write-Host "An error occurred: $_" -ForegroundColor Red
+    }
+}
+
+
