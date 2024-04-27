@@ -1,0 +1,15 @@
+# Correct structure for blue-fw1-vars.yml
+vyos_config:
+  hostname: blue-fw1
+  lan_ip: 10.0.5.2
+  lan: 10.0.5.0/24
+  dhcp_name_server: 10.0.5.5
+  shared_network: BLUE1
+  dhcp_domain: blue1.local
+  dhcp_range_start: 10.0.5.75
+  dhcp_range_stop: 10.0.5.125
+
+ansible_python_interpreter: /usr/bin/python3
+ansible_connection: network_cli
+ansible_network_os: vyos
+ansible_user: vyos
