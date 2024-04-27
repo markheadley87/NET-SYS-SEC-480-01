@@ -1,0 +1,27 @@
+# File: vyos-blue.yml
+- name: Configure DHCP Pool on blue-fw1
+  hosts: vyos
+  vars_files:
+    - blue-fw1-vars.yml
+
+  tasks:
+    - name: Get VYOS info
+      vyos_command:
+        commands: show version
+      register: version_info
+
+    - name: Display VYOS version info
+      debug:
+        msg: "{{ version_info.stdout_lines }}"
+
+    - name: Configure Vyos DHCP
+      vyos_config:
+        save: yes
+        lines:
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} default-router {{ vyos_config.lan_ip }}"
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} domain-name {{ vyos_config.dhcp_domain }}"
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} lease '86400'"
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} name-server {{ vyos_config.dhcp_name_server }}"
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} range 0 start {{ vyos_config.dhcp_range_start }}"
+          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} range 0 stop {{ vyos_config.dhcp_range_stop }}"
+          
