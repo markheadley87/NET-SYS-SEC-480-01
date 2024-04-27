@@ -1,0 +1,24 @@
+linux:
+  hosts:
+  children:
+    rocky:
+      hosts:
+        10.0.5.84:
+          hostname: rocky1
+          lan_ip: 10.0.5.10
+        10.0.5.85:
+          hostname: rocky2
+          lan_ip: 10.0.5.11
+        10.0.5.86:
+          hostname: rocky3
+          lan_ip: 10.0.5.12
+      vars:
+        device: "{{ ansible_default_ipv4.interface }}"
+
+  vars:
+    public_key: "{public key is in here, not putting it on github}"
+    ansible_user: deployer
+    prefix: 24
+    gateway: 10.0.5.2
+    name_server: 10.0.5.5
+    domain: blue.local
