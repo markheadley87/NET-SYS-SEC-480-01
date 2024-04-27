@@ -1,27 +1,26 @@
-# File: vyos-blue.yml
-- name: Configure DHCP Pool on blue-fw1
+---
+- name: vyos DHCP configuration
   hosts: vyos
-  vars_files:
-    - blue-fw1-vars.yml
+  gather_facts: no  # Often turned off for network devices to save time unless needed
 
   tasks:
-    - name: Get VYOS info
+    - name: Get vyos version
       vyos_command:
         commands: show version
-      register: version_info
+      register: version
 
-    - name: Display VYOS version info
-      debug:
-        msg: "{{ version_info.stdout_lines }}"
+    - debug:
+        var: version.stdout_lines
 
-    - name: Configure Vyos DHCP
+    - name: Configure DHCP on VyOS
       vyos_config:
         save: yes
         lines:
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} default-router {{ vyos_config.lan_ip }}"
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} domain-name {{ vyos_config.dhcp_domain }}"
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} lease '86400'"
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} name-server {{ vyos_config.dhcp_name_server }}"
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} range 0 start {{ vyos_config.dhcp_range_start }}"
-          - "set service dhcp-server shared-network-name {{ vyos_config.shared_network }} subnet {{ vyos_config.lan }} range 0 stop {{ vyos_config.dhcp_range_stop }}"
-          
+          - "set service dhcp-server global-parameters 'local-address {{ hostvars[inventory_hostname].lan_ip }};'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} authoritative"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} default-router '{{ hostvars[inventory_hostname].lan_ip }}'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} name-server '{{ hostvars[inventory_hostname].dhcp_name_server }}'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} domain-name '{{ hostvars[inventory_hostname].dhcp_domain }}'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} lease '86400'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} range {{ hostvars[inventory_hostname].shared_network }}-POOL start '10.0.5.75'"
+          - "set service dhcp-server shared-network-name {{ hostvars[inventory_hostname].shared_network }} subnet {{ hostvars[inventory_hostname].lan }} range {{ hostvars[inventory_hostname].shared_network }}-POOL stop '10.0.5.125'"
