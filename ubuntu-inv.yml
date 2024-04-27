@@ -1,0 +1,19 @@
+linux:
+  hosts:
+  children:
+    ubuntu:
+      hosts:
+        10.0.5.30:
+          hostname: ubuntu1
+          lan_ip: 10.0.5.30
+        10.0.5.31:
+          hostname: ubuntu2
+          lan_ip: 10.0.5.31
+
+  vars:
+    public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCRr0Si6tzYddtllM5fM8cH32S6YuLBXnwzZo25vtIeJcLoCvoDbe9kYS0vgy0ZVRsgZJ0QqTZub3JTSFCgxI9gPeX0k9Q+YhpXKk+MAFKUtMxRX0KMK4YnLZCF/qaghkX7M6pA4jG9B3Fc/AI9czUaWzQYnBsEi5zsoZv5v5sdcU5mvkSDI5PIhRlf2Kof9SYhtuk2YnRSAucOgPkuGIVrKVOEUNX9IodBIGBGyw7nDPtTyBDcXtjK7jNwMhRechWNHWiI0ZUSUCREjoDC8C2zo3GJvl7GyLQPSLuFb4Vwqv/wIYJqbtb0Zda6qsW17L2Pa1kHaIcs33e5HCDfJpjk50b23YvBJg8zmc8wfd7E/t0y78kcfzxxC8ZgPrH3wJsKjvPD2ln2i+OUxF2SyBQhZn1g+hpLRQg3vy4M2oubgkM4lK8xapZ3HEr8cAtsP/GsGREi+zkBLiPVvp2HrlFE8UqaR+b+J5LtxQi32Fr0Va+/JBPp0kjlNLvb1+Cd+uda3VGZFW76FKR+SWVK+fv0xdhCG41m1O1RqtMVpogtpMJXIvlzClEGW0eYtexuo8TZHkulv/lX2un2U4AzeK4x4CtT+YYhKupAamTat6Y+hpmVvMx+f/UjUBCsfrE+71S9CAtilX5Ks6MOxiaQbUUFRPIgmvujkw8qXTLemH//Jw== mark@xubuntu-wan"
+    ansible_user: "mark"
+    prefix: 24
+    gateway: 10.0.5.2
+    name_server: 10.0.5.2
+    domain: blue.local
