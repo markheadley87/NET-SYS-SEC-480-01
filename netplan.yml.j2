@@ -1,0 +1,9 @@
+network:
+  version: 2
+  ethernets:
+    ens192:
+      addresses: [{{ lan_ip }}/{{ prefix }}]
+      gateway4: "{{ gateway }}"
+      nameservers:
+        addresses: [{{ name_server }}, {{ gateway }}]
+      dhcp4: no
