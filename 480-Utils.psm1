@@ -323,4 +323,57 @@ Function Set-Network {
     }
 }
 
+Function Set-WindowsIP {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$VMName,  # Now expects a VM name as a string
 
+        [Parameter(Mandatory = $true)]
+        [string]$IpAddress,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SubnetMask,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultGateway,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PrimaryDNS,
+
+        [Parameter(Mandatory = $false)]
+        [string]$SecondaryDNS,
+
+        [string]$InterfaceName = "Ethernet0"
+    )
+
+    # Retrieve the VM object based on the VM name
+    $VM = Get-VM -Name $VMName
+    if (-not $VM) {
+        Write-Host "VM with name $VMName not found." -ForegroundColor Red
+        return
+    }
+
+    # Prompt for guest username and password securely
+    $GuestUser = Read-Host "Enter the guest username"
+    $GuestPassword = Read-Host "Enter the guest password" -AsSecureString
+    $Credential = New-Object System.Management.Automation.PSCredential ($GuestUser, $GuestPassword)
+
+    # Build the network configuration script
+    $ScriptText = "netsh interface ip set address name=`"$InterfaceName`" static $IpAddress $SubnetMask $DefaultGateway 1`n"
+    $ScriptText += "netsh interface ip set dnsservers `"$InterfaceName`" static $PrimaryDNS`n"
+    if ($SecondaryDNS) {
+        $ScriptText += "netsh interface ip add dnsservers `"$InterfaceName`" $SecondaryDNS index=2`n"
+    }
+
+    # Execute the script inside the VM using the provided credentials
+    $ScriptOutput = Invoke-VMScript -VM $VM -ScriptText $ScriptText -GuestUser $Credential.UserName -GuestPassword $Credential.GetNetworkCredential().Password -ScriptType "Powershell"
+
+    # Output results
+    if ($ScriptOutput.ScriptOutput) {
+        Write-Host "IP configuration successful:" -ForegroundColor Green
+        Write-Host $ScriptOutput.ScriptOutput
+    } else {
+        Write-Host "Failed to configure IP settings" -ForegroundColor Red
+    }
+
+}
