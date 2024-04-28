@@ -13,6 +13,7 @@ Write-Host "4: Set Network"
 Write-Host "5: Retrieve VM"
 Write-Host "6: Start VM"
 Write-Host "7: Stop VM"
+Write-Host "8: Set WindowsIP"
 # Write-Host "*: Placeholder"
 Write-Host "X: Exit Program"
 
@@ -61,6 +62,12 @@ switch ($choice) {
         # User chose to Stop VM
         Write-Host "Stopping VM..."
         Invoke-480StopVM
+    }
+
+    "8" {
+        # User chose to Stop VM
+        Write-Host "Stopping VM..."
+        Set-WindowsIP
     }
 
     "X" {
